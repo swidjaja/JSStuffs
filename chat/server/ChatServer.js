@@ -37,7 +37,7 @@ ChatServer.prototype.addClient = function(client) {
 			nickname = newClient.getNickname();
 			ipAddress = newClient.getIPAddress();
 			this.clients.push(newClient);
-			this.nickServ.addNickname(nickname);
+			this.nickServ.addNickname(nickname, newClient);
 			var msgStr = this._getUserConnectedMsgStr(nickname, ipAddress);
 			this._broadcastMsg(newClient, msgStr);
 		}
@@ -99,13 +99,23 @@ ChatServer.prototype._processServiceMsg = function(msgingClient, msg) {
             	_this._switchNickname(msgingClient, newNickname);
             }, 0);
             break;
+        case 'msg':
+        	setTimeout(function() {
+		    	var toNickname = tokens[1];
+		    	var toMsg = tokens[2];
+		    	_this._doUserToUserMsg(msgingClient, toNickname, toMsg);
+		    }, 0);
+        	break;
         case 'exit':
         	setTimeout(function() {
-        		var client = msgingClient.getClientParam();
-        		client.destroy();	// Force-kill the socket
-        		_this.removeClient(msgingClient);
-        		client = null;
+        		_this._disconnectUser(msgingClient);
         	}, 0);
+        	break;
+        case 'whoami':
+        	setTimeout(function() {
+        		_this._tellUserNickname(msgingClient);
+        	}, 0);
+        	break;
         default:
             break;
     }
@@ -113,7 +123,7 @@ ChatServer.prototype._processServiceMsg = function(msgingClient, msg) {
 
 ChatServer.prototype._switchNickname = function(msgingClient, newNickname) {
     var oldNickname = msgingClient.getNickname();
-    var response = this.nickServ.handleNicknameChange(oldNickname, newNickname);
+    var response = this.nickServ.handleNicknameChange(oldNickname, newNickname, msgingClient);
     if (response.okToSwitch === false) {
     	var response = this._getUserNicknameReqDeniedStr(newNickname);
     	this._broadcastPrivateMsg(msgingClient, response);
@@ -122,6 +132,38 @@ ChatServer.prototype._switchNickname = function(msgingClient, newNickname) {
     	var msgStr = this._getUserNicknameChangeStr(oldNickname, newNickname);
     	this._broadcastMsgAll(msgingClient, msgStr );
     }
+};
+
+ChatServer.prototype._doUserToUserMsg = function(msgingClient, toNickname, toMsg) {
+	var msgStr;
+	var fromNickname;
+    var toClient = this.nickServ.userLookupFromNickname(toNickname);
+	if (toClient) {
+		fromNickname = msgingClient.getNickname();
+		msgStr = this._getUserToUserMsgStr(fromNickname, toMsg);
+		this._broadcastPrivateMsg(toClient, msgStr);
+	} else {
+		msgStr = this._getNicknameNotFoundStr(toNickname);
+		this._broadcastPrivateMsg(msgingClient, msgStr);
+	}
+};
+
+ChatServer.prototype._disconnectUser = function(msgingClient) {
+	try {
+		var client = msgingClient.getClientParam();
+		client.destroy();	// Force-kill the socket
+		_this.removeClient(msgingClient);
+		client = null;
+		return true;
+	} catch (ex) {
+		return false;
+	}
+};
+
+ChatServer.prototype._tellUserNickname = function(msgingClient) {
+	var nickname = msgingClient.getNickname();
+	var msgStr = this._getUserIdentityMsgStr(nickname);
+	this._broadcastPrivateMsg(msgingClient, msgStr);
 };
 
 ChatServer.prototype._broadcastUserMsg = function(msgingClient, msg) {
@@ -186,6 +228,16 @@ ChatServer.prototype._broadcastPrivateMsg = function(msgingClient, msg) {
 	return success;
 };
 
+ChatServer.prototype._getUserToUserMsgStr = function(nickname, msg) {
+	msg = nickname + ' : ' + msg + '\n';
+	return msg;
+};
+
+ChatServer.prototype._getUserIdentityMsgStr = function(nickname) {
+	var msg = 'You are ' + nickname + '\n';
+	return msg;
+};
+
 ChatServer.prototype._getUserPublicMsgStr = function(nickname, msg) {
 	msg = nickname + ' : ' + msg;
 	return msg;
@@ -193,6 +245,11 @@ ChatServer.prototype._getUserPublicMsgStr = function(nickname, msg) {
 
 ChatServer.prototype._getUserNicknameReqDeniedStr = function(newNickname) {
     var msg = newNickname + ' is already used by another user. Please choose another one\n';
+    return msg;
+};
+
+ChatServer.prototype._getNicknameNotFoundStr = function(nickname) {
+    var msg = nickname + ' is not currently online!\n';
     return msg;
 };
 
