@@ -31,6 +31,7 @@ ChatServer.prototype.addClient = function(client) {
 			nickname = newClient.getNickname();
 			ipAddress = newClient.getIPAddress();
 			this.clients.push(newClient);
+			this.nickServ.addNickname(nickname);
 			var msgStr = this._getUserConnectedMsgStr(nickname, ipAddress);
 			this._broadcastMsg(newClient, msgStr);
 		}
@@ -52,6 +53,7 @@ ChatServer.prototype.removeClient = function(client) {
 			var thisClient = this.clients[idx];
 			if (thisClient === client) {
 				nickname = thisClient.getNickname();
+				this.nickServ.removeNickname(nickname);
 				ipAddress = thisClient.getIPAddress();
 				this.clients.splice(idx, 1);
 				thisClient.destroy();
@@ -80,6 +82,30 @@ ChatServer.prototype.processUserMsg = function(msgingClient, msg) {
 };
 
 ChatServer.prototype._processServiceMsg = function(msgingClient, msg) {
+    var command = msg.substring(1).trim();
+    var tokens = command.split(' ');
+    var oper = tokens[0].toLowerCase();
+    switch (oper) {
+        case 'nick':
+            var newNickname = tokens[1];
+            this._switchNickname(msgingClient, newNickname);
+            break;
+        default:
+            break;
+    }
+};
+
+ChatServer.prototype._switchNickname = function(msgingClient, newNickname) {
+    var oldNickname = msgingClient.getNickname();
+    var response = this.nickServ.handleNicknameChange(oldNickname, newNickname);
+    if (response.okToSwitch === false) {
+    	var response = this._getUserNicknameReqDeniedStr(newNickname);
+    	this._broadcastPrivateMsg(msgingClient, response);
+    } else {
+    	msgingClient.setNickname(newNickname);
+    	var msgStr = this._getUserNicknameChangeStr(oldNickname, newNickname);
+    	this._broadcastMsgAll(msgingClient, msgStr );
+    }
 };
 
 ChatServer.prototype._broadcastUserMsg = function(msgingClient, msg) {
@@ -147,6 +173,16 @@ ChatServer.prototype._broadcastPrivateMsg = function(msgingClient, msg) {
 ChatServer.prototype._getUserPublicMsgStr = function(nickname, msg) {
 	msg = nickname + ' : ' + msg;
 	return msg;
+};
+
+ChatServer.prototype._getUserNicknameReqDeniedStr = function(newNickname) {
+    var msg = newNickname + ' is already used by another user. Please choose another one\n';
+    return msg;
+};
+
+ChatServer.prototype._getUserNicknameChangeStr = function(oldNickname, newNickname) {
+    var msg = oldNickname + ' is now known as ' + newNickname + '\n';
+    return msg;
 };
 
 ChatServer.prototype._getUserConnectedMsgStr = function(nickname, ipAddress) {

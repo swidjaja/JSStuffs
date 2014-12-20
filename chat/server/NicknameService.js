@@ -9,6 +9,7 @@
  */
 
 function NicknameService() {
+    this.nicknames = {};
 };
 
 NicknameService.prototype.rejectReason = {
@@ -17,8 +18,29 @@ NicknameService.prototype.rejectReason = {
 	NICKNAME_IS_RESERVED: 3
 };
 
-NicknameService.prototype.handleNicknameChange = function(client, newNickname) {
+NicknameService.prototype.addNickname = function(nickname) {
+    var searchKey = nickname.toLowerCase();
+    if (this.nicknames[searchKey]) {
+        return {'okToAdd': false, 'errorCode': this.rejectReason.NICKNAME_BEING_USED};
+    } else {
+        this.nicknames[searchKey] = nickname;
+        return {'okToAdd': true};
+    }
+};
 
+NicknameService.prototype.removeNickname = function(nickname) {
+    delete this.nicknames[nickname.toLowerCase()];
+};
+
+NicknameService.prototype.handleNicknameChange = function(oldNickname, newNickname) {
+    var searchKey = newNickname.toLowerCase();
+    if (this.nicknames[searchKey]) {
+        return {'okToSwitch': false, 'errorCode': this.rejectReason.NICKNAME_BEING_USED};
+    } else {
+        delete this.nicknames[oldNickname.toLowerCase()];
+        this.nicknames[searchKey] = newNickname;
+        return {'okToSwitch': true}
+    }
 };
 
 function initialize(client) {
