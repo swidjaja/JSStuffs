@@ -8,15 +8,21 @@ function ChatServer(options) {
 	this.encodingType = options.encodingType || 'utf8';
 	this.anonUserPrefix = 'Guest';
 	this.clients = [];
+	this.portNumber = parseInt(options.portNumber, 10) || this.defaultPortNumber;
+	this.name = options.name || '';
 	this.nickServ = NickServ.initialize();
 }
 
-ChatServer.prototype.portNumber = 8001;
+ChatServer.prototype.defaultPortNumber = 8001;
 
 ChatServer.prototype.MAX_NUMBER_OF_USERS = 2;
 
 ChatServer.prototype.getPortNumber = function() {
 	return this.portNumber;
+};
+
+ChatServer.prototype.getName = function() {
+	return this.name;
 };
 
 ChatServer.prototype.addClient = function(client) {
