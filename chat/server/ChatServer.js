@@ -82,14 +82,24 @@ ChatServer.prototype.processUserMsg = function(msgingClient, msg) {
 };
 
 ChatServer.prototype._processServiceMsg = function(msgingClient, msg) {
+	var _this = this;
     var command = msg.substring(1).trim();
     var tokens = command.split(' ');
     var oper = tokens[0].toLowerCase();
     switch (oper) {
         case 'nick':
             var newNickname = tokens[1];
-            this._switchNickname(msgingClient, newNickname);
+            setTimeout(function() {
+            	_this._switchNickname(msgingClient, newNickname);
+            }, 0);
             break;
+        case 'exit':
+        	setTimeout(function() {
+        		var client = msgingClient.getClientParam();
+        		client.destroy();	// Force-kill the socket
+        		_this.removeClient(msgingClient);
+        		client = null;
+        	}, 0);
         default:
             break;
     }
