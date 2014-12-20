@@ -3,12 +3,16 @@
 var net = require('net');
 var ChatServer = require('./ChatServer');
 
-var args = process.argv && process.argv.slice(2);
+var args;
 var errorMsg = '';
-
 var allOptions = {};
+var chatServer;
+var portNumber;
+var serverName;
+var server;
 
 (function() {
+	args = process.argv && process.argv.slice(2);
 	args.forEach(function(arg, idx) {
 		if (idx % 2 == 0) {
 			var oper = arg;
@@ -33,30 +37,30 @@ var allOptions = {};
 		console.log('Cannot start ChatServer! - ' + errorMsg);
 		process.exit();
 	}
+
+	chatServer = ChatServer.initialize(allOptions);
+	portNumber = chatServer.getPortNumber();
+	serverName = chatServer.getName();
+
+	server = net.createServer(function(client) {
+
+		var newClient = chatServer.addClient(client);
+
+		if (!newClient) {
+			client.end();
+		} else {
+			client.on('data', function(data) {
+				chatServer.processUserMsg(newClient, data);
+			});
+			client.on('close', function(hadError) {
+				chatServer.removeClient(newClient);
+				newClient = null;
+			});
+		}
+	});
+
+	server.listen(portNumber, function() {
+		console.log('Chat server ' + serverName + ' is now up at port ' + portNumber);
+	});
 })();
 
-var chatServer = ChatServer.initialize(allOptions);
-
-var portNumber = chatServer.getPortNumber();
-var serverName = chatServer.getName();
-
-var server = net.createServer(function(client) {
-
-	var newClient = chatServer.addClient(client);
-
-	if (!newClient) {
-		client.end();
-	} else {
-		client.on('data', function(data) {
-			chatServer.processUserMsg(newClient, data);
-		});
-		client.on('close', function(hadError) {
-			chatServer.removeClient(newClient);
-			newClient = null;
-		});
-	}
-});
-
-server.listen(portNumber, function() {
-	console.log('Chat server ' + serverName + ' is now up at port ' + portNumber);
-});
