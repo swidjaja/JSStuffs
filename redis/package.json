@@ -1,0 +1,18 @@
+{
+  "name": "Learn-Redis",
+  "version": "0.1.0",
+  "description": "Learn Redis",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "express": ">4.11.2",
+    "redis": ">=0.12.1",
+    "rsvp": ">=3.0.16",
+    "lodash": ">=3.1.0"
+  },
+  "repository": "",
+  "author": "Sugi",
+  "license": "BSD"
+}
