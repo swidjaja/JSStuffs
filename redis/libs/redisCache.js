@@ -1,3 +1,5 @@
+'use strict';
+
 var redis 	= require('redis');
 var rsvp 	= require('rsvp'); 
 
@@ -5,13 +7,27 @@ module.exports = function (options) {
 	options = options || {};
 	var host = options.host || 'localhost';
 	var portNumber = options.portNumber || 6379;
+    var redisClientConnected = false;
 	var redisClient = redis.createClient(portNumber, host, options);
 	
 	redisClient.on('error', function (err) {
-		console.log('Error!! ', err);
+        redisClientConnected = false;
 	});
 
+    redisClient.on('ready', function () {
+        redisClientConnected = true;
+    });
+
 	var apis = {
+        isConnected: function () {
+            return redisClientConnected;
+        },
+        disconnect: function () {
+            redisClient.quit();
+        },
+        getServerInfo: function () {
+        	return redisClient.server_info;
+        },
 		get: function (key) {
 			// Why not rsvp.denodeify(redisClient.get)(key)?
 			// denodeify will get the redisClient.get function object and
